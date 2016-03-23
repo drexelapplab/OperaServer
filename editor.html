@@ -1,0 +1,125 @@
+<!doctype html>
+<html>
+<head>
+    <script src = "https://ajax.googleapis.com/ajax/libs/angularjs/1.4.9/angular.min.js"></script>
+</head>
+<body>
+<div ng-app="app" ng-controller="editor">
+    <h2>Opera Web App: Editor</h2>
+    <hr />
+    <ol start="0">
+        <li ng-repeat="message in messages">
+            {{message.text}}
+            <button ng-click="removeMessage(message)">
+                Remove
+            </button>
+        </li>
+    </ol>
+    <hr />
+    <label>New Message:</label>
+    <input type = "text" ng-model="messageField" placeholder = "Enter Message Here">
+    <button ng-click="addMessage()">Add</button>
+    <hr />
+    Current Message: {{currentMessage.text}}
+    <hr />
+    <button ng-click="prevMessage()">Prev</button>
+    <button ng-click="nextMessage()">Next</button>
+    <br/>
+    <button ng-click="gotoMessage()">Go to:</button>
+    <input type = "text" ng-model="indexField" placeholder = "#">
+
+
+</div>
+<script>
+    var app = angular.module('app',[]);
+    app.controller('editor', function($scope,$http) {
+
+        //start Setup Code
+        $scope.messages = {};
+        $http({
+            method: 'GET',
+            url: 'http://localhost:8000/all'
+        }).then(function successCallback(response) {
+            $scope.messages = response.data;
+        }, function errorCallback(response) {
+            alert('error: could not fetch messages');
+        });
+
+        $scope.messageField = "";
+        $scope.indexField = "";
+        $scope.currentMessage = {text:"Welcome to the Opera"};
+        $scope.i = 0;
+        $scope.$watch('i', function () {
+            $scope.currentMessage = $scope.messages[$scope.i - 1];
+            if ($scope.i === 0) {
+                $scope.currentMessage = $scope.messages[$scope.messages.length - 1];
+            }
+        });
+
+        //todo: move to more appropriate place?
+        //end Setup Code
+
+        $scope.removeMessage = function (message) {
+            $http({
+                method: 'POST',
+                url: 'http://localhost:8000/delete',
+                data: message
+            }).then(function successCallback(response) {
+                $scope.messages.splice($scope.messages.indexOf(message,1));
+            }, function errorCallback(response) {
+                alert('error: could not delete message');
+            });
+        };
+
+        $scope.addMessage = function () {
+            $http({
+                method: 'POST',
+                url: 'http://localhost:8000/add',
+                data: {
+                    "text":$scope.messageField
+                }
+            }).then(function successCallback(response) {
+                $scope.messages.push(response.data.message);
+                $scope.messageField = "";
+                $scope.i = 0;
+                $scope.nextMessage();
+            }, function errorCallback(response) {
+                alert('error: could not add message');
+            });
+        };
+
+        $scope.nextMessage = function () {
+            $http({
+                method: 'GET',
+                url: 'http://localhost:8000/push/' + ($scope.i++),
+            }).then(function successCallback(response) {
+                $scope.i = $scope.i % $scope.messages.length;
+            }, function errorCallback(response) {
+            });
+        };
+
+        $scope.prevMessage = function () {
+            $http({
+                method: 'GET',
+                url: 'http://localhost:8000/push/' + ($scope.i--),
+            }).then(function successCallback(response) {
+                $scope.i = $scope.i % $scope.messages.length;
+            }, function errorCallback(response) {
+                alert('error: could not update display');
+            });
+        };
+
+        $scope.gotoMessage = function () {
+            $http({
+                method: 'GET',
+                url: 'http://localhost:8000/push/' + ($scope.indexField),
+            }).then(function successCallback(response) {
+                $scope.i = parseInt($scope.indexField) + 1;
+            }, function errorCallback(response) {
+            });
+        };
+    });
+</script>
+
+</body>
+</html>
